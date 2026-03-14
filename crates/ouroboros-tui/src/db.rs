@@ -182,9 +182,6 @@ pub fn populate_state_from_events(state: &mut AppState, events: &[EventRow]) {
                 .and_then(|v| v.as_str())
                 .map(String::from),
         });
-        if state.execution_events.len() > 500 {
-            state.execution_events.drain(..state.execution_events.len() - 500);
-        }
 
         let log_level = if ev.event_type.contains("fail") || ev.event_type.contains("error") {
             LogLevel::Error
@@ -485,6 +482,11 @@ pub fn populate_state_from_events(state: &mut AppState, events: &[EventRow]) {
             }
             _ => {}
         }
+    }
+
+    // Cap execution_events after processing all events (batch trim, not per-event)
+    if state.execution_events.len() > 500 {
+        state.execution_events.drain(..state.execution_events.len() - 500);
     }
 
     // Rebuild lineage list state
