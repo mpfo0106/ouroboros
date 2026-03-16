@@ -180,7 +180,9 @@ class JobManager:
     async def _monitor_job(self, job_id: str) -> None:
         """Mirror linked execution/lineage progress into job updates."""
         last_message: str | None = None
+        last_update = asyncio.get_running_loop().time()
         interval = 1.0
+        _HEARTBEAT_INTERVAL = 60.0
         while True:
             await asyncio.sleep(interval)
             snapshot = await self.get_snapshot(job_id)
@@ -188,9 +190,13 @@ class JobManager:
                 return
 
             message = await self._derive_status_message(snapshot)
-            if message and message != last_message:
+            now = asyncio.get_running_loop().time()
+            changed = message and message != last_message
+            heartbeat_due = message and (now - last_update >= _HEARTBEAT_INTERVAL)
+            if changed or heartbeat_due:
                 await self.update_status(job_id, snapshot.status, message)
                 last_message = message
+                last_update = now
                 interval = 1.0  # Reset on change
             else:
                 interval = min(interval * 1.5, 5.0)  # Backoff up to 5s
@@ -198,26 +204,44 @@ class JobManager:
     async def _derive_status_message(self, snapshot: JobSnapshot) -> str | None:
         """Summarize linked execution or lineage progress."""
         if snapshot.links.execution_id:
-            events = await self._event_store.query_events(
+            workflow_events = await self._event_store.query_events(
                 aggregate_id=snapshot.links.execution_id,
-                limit=20,
+                event_type="workflow.progress.updated",
+                limit=1,
             )
-            workflow_event = next(
-                (e for e in events if e.type == "workflow.progress.updated"),
-                None,
+            subtask_events = await self._event_store.query_events(
+                aggregate_id=snapshot.links.execution_id,
+                event_type="execution.subtask.updated",
+                limit=1,
             )
+            workflow_event = workflow_events[0] if workflow_events else None
+            subtask_event = subtask_events[0] if subtask_events else None
+
             if workflow_event is not None:
                 data = workflow_event.data
                 completed = data.get("completed_count")
                 total = data.get("total_count")
                 current_phase = data.get("current_phase") or "Working"
                 detail = data.get("activity_detail") or data.get("activity") or ""
+                if subtask_event is not None:
+                    sub_data = subtask_event.data
+                    sub_name = sub_data.get("content") or sub_data.get("sub_task_id") or ""
+                    sub_status = sub_data.get("status") or ""
+                    if sub_name:
+                        detail = f"{sub_name} ({sub_status})" if sub_status else sub_name
                 progress = (
                     f"{completed}/{total} ACs"
                     if completed is not None and total is not None
                     else ""
                 )
                 return " | ".join(part for part in (current_phase, detail, progress) if part)
+
+            if subtask_event is not None:
+                sub_data = subtask_event.data
+                sub_name = sub_data.get("content") or sub_data.get("sub_task_id") or ""
+                sub_status = sub_data.get("status") or ""
+                if sub_name:
+                    return f"Working | {sub_name} ({sub_status})" if sub_status else f"Working | {sub_name}"
 
         if snapshot.links.session_id:
             repo = SessionRepository(self._event_store)
