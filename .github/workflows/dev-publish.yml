@@ -43,15 +43,22 @@ jobs:
 
       - name: Build package
         if: steps.check.outputs.skip == 'false'
+        id: build
         run: |
           uv build
-          echo "Built package:"
-          ls -la dist/
+          VERSION=$(python -c "
+          import re, pathlib
+          for f in pathlib.Path('dist').iterdir():
+              if f.suffix == '.whl':
+                  m = re.match(r'[^-]+-([^-]+)-', f.name)
+                  if m: print(m.group(1))
+          ")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "::notice::📦 Dev version: $VERSION"
 
       - name: Smoke test
         if: steps.check.outputs.skip == 'false'
         run: |
-          # Install the built wheel and verify runtime version
           uv pip install dist/*.whl --system
           python -c "
           import ouroboros
@@ -66,3 +73,5 @@ jobs:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           uv publish --check-url https://pypi.org/simple/ dist/*
+          echo "::notice::✅ Published ouroboros-ai==${{ steps.build.outputs.version }} to PyPI"
+          echo "::notice::Install: pip install ouroboros-ai==${{ steps.build.outputs.version }}"
