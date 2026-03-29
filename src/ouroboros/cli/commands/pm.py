@@ -447,6 +447,20 @@ async def _run_pm_interview(
 
         console.print(f"\n[bold yellow]?[/] {question}\n")
 
+        # Check if this question was classified as skippable —
+        # if so, show a hint that the user can defer it.
+        classification = engine.get_last_classification()
+        if classification == "decide_later":
+            console.print(
+                "[dim]  💡 This question can be deferred. "
+                'Type "decide later" or "skip" to defer it.[/]\n'
+            )
+        elif classification == "deferred":
+            console.print(
+                "[dim]  💡 This is a technical question that can be deferred to the dev phase. "
+                'Type "defer" or "skip" to defer it.[/]\n'
+            )
+
         # Persist state + meta AFTER displaying the question but BEFORE
         # waiting for input so that an interruption preserves the pending
         # question and --resume shows the same question.
@@ -480,6 +494,39 @@ async def _run_pm_interview(
         # can create a proper answered round (mirrors MCP handler pattern).
         if state.rounds and state.rounds[-1].user_response is None:
             state.rounds.pop()
+
+        # Handle user-initiated skip (decide later / defer to dev)
+        _lower = user_response.strip().lower()
+        if classification == "decide_later" and _lower in (
+            "decide later",
+            "skip",
+            "[decide_later]",
+        ):
+            record_result = await engine.skip_as_decide_later(state, question)
+            if isinstance(record_result, Result) and record_result.is_err:
+                print_error(f"Failed to skip question: {record_result.error}")
+                break
+            save_result = await engine.save_state(state)
+            if isinstance(save_result, Result) and save_result.is_err:
+                print_error(f"Failed to save state: {save_result.error}")
+                break
+            _save_cli_pm_meta(state.interview_id, engine)
+            continue
+        if classification == "deferred" and _lower in (
+            "defer",
+            "skip",
+            "[deferred]",
+        ):
+            record_result = await engine.skip_as_deferred(state, question)
+            if isinstance(record_result, Result) and record_result.is_err:
+                print_error(f"Failed to defer question: {record_result.error}")
+                break
+            save_result = await engine.save_state(state)
+            if isinstance(save_result, Result) and save_result.is_err:
+                print_error(f"Failed to save state: {save_result.error}")
+                break
+            _save_cli_pm_meta(state.interview_id, engine)
+            continue
 
         record_result = await engine.record_response(state, user_response, question)
         if isinstance(record_result, Result) and record_result.is_err:
