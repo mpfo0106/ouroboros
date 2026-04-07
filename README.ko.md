@@ -42,7 +42,7 @@
 >
 > ```bash
 > clawhub install ouroboros
-> openclaw mcp set ouroboros '{"command":"uvx","args":["--from","ouroboros-ai","ouroboros","mcp","serve"]}'
+> openclaw mcp set ouroboros '{"command":"uvx","args":["--from","ouroboros-ai[mcp]","ouroboros","mcp","serve"]}'
 > ```
 >
 > `openclaw mcp set` 명령어가 없다면 `openclaw update`로 최신 버전으로 업데이트하세요.

@@ -34,7 +34,7 @@ execution, and status tracking. Your only job is to be a relay.
 ## Setup
 
 ```bash
-openclaw mcp set ouroboros '{"command":"uvx","args":["--from","ouroboros-ai","ouroboros","mcp","serve"]}'
+openclaw mcp set ouroboros '{"command":"uvx","args":["--from","ouroboros-ai[mcp]","ouroboros","mcp","serve"]}'
 ```
 
 ## Routing

@@ -43,7 +43,7 @@
 >
 > ```bash
 > clawhub install ouroboros
-> openclaw mcp set ouroboros '{"command":"uvx","args":["--from","ouroboros-ai","ouroboros","mcp","serve"]}'
+> openclaw mcp set ouroboros '{"command":"uvx","args":["--from","ouroboros-ai[mcp]","ouroboros","mcp","serve"]}'
 > ```
 
 ---
@@ -109,7 +109,7 @@ See runtime guides: [Claude Code](./docs/runtime-guides/claude-code.md) · [Code
 Chat platform integration (OpenClaw / Slack / Discord):
 ```bash
 clawhub install ouroboros                    # install OpenClaw skill
-openclaw mcp set ouroboros '{"command":"uvx","args":["--from","ouroboros-ai","ouroboros","mcp","serve"]}'
+openclaw mcp set ouroboros '{"command":"uvx","args":["--from","ouroboros-ai[mcp]","ouroboros","mcp","serve"]}'
 ```
 > If `openclaw mcp set` is not recognized, run `openclaw update` to get the latest version.
 

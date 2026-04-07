@@ -27,7 +27,7 @@ uv tool install ouroboros-ai
 ### 2. Register Ouroboros MCP server in OpenClaw
 
 ```bash
-openclaw mcp set ouroboros '{"command":"uvx","args":["--from","ouroboros-ai","ouroboros","mcp","serve"]}'
+openclaw mcp set ouroboros '{"command":"uvx","args":["--from","ouroboros-ai[mcp]","ouroboros","mcp","serve"]}'
 ```
 
 > If `openclaw mcp set` is not recognized, run `openclaw update` to get the latest version.
